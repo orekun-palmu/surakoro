@@ -272,13 +272,19 @@
             "freku": { name: "フレクー", hp: 14, atk: 10, def: 10, spd: 16, crit: 7, type: "物理", target: "元気", skill: "oyatsu" },
             "yamikuma": { name: "ヤミクマ", hp: 20, atk: 16, def: 12, spd: 17, crit: 3, type: "魔法,魔族", target: "均等", skill: "nightmare" },
             "slapon": { name: "スラポン", hp: 14, atk: 12, def: 6, spd: 24, crit: 5, type: "魔族,魔法", target: "強者", skill: "funyarto" },
-            "walta": { name: "cpt.ワル多", hp: 16, atk: 15, def: 8, spd: 34, crit: 7, type: "物理,魔族", target: "弱者", skill: "shibilto" },
+            "walta": { name: "cpt.ワル太", hp: 16, atk: 15, def: 8, spd: 34, crit: 7, type: "物理,魔族", target: "弱者", skill: "shibilto" },
             "rutopen": { name: "ルトペン", hp: 17, atk: 16, def: 4, spd: 6, crit: 5, type: "魔族,物理,魔法耐性", target: "魔族", skill: "burelto" }
         };
 
         function initCards() {
             const container = document.getElementById('cards-container');
             container.innerHTML = '';
+            
+            // プリセット用キーをあいうえお順（日本語名の昇順）にソート
+            const sortedKeys = Object.keys(CHARACTER_DATABASE)
+                .filter(k => k !== "custom")
+                .sort((a, b) => CHARACTER_DATABASE[a].name.localeCompare(CHARACTER_DATABASE[b].name, 'ja'));
+
             for (let i = 1; i <= 5; i++) {
                 let cardHtml = `
                     <div class="slime-card" id="card-${i}">
@@ -286,7 +292,7 @@
                         <label>プリセット選択</label>
                         <select id="preset-${i}" onchange="loadPreset(${i})">
                             <option value="custom">--カスタム入力--</option>
-                            ${Object.keys(CHARACTER_DATABASE).filter(k=>k!=="custom").map(k=>`<option value="${k}">${CHARACTER_DATABASE[k].name}</option>`).join('')}
+                            ${sortedKeys.map(k => `<option value="${k}">${CHARACTER_DATABASE[k].name}</option>`).join('')}
                         </select>
                         <label>名前</label><input type="text" id="name-${i}" value="キャラ${i}">
                         <label>【調子】</label>
@@ -409,13 +415,13 @@
                     turn++;
                     let alive = slimes.filter(s => s.curHp > 0);
                     
-                    // ─── 新仕様：行動順ソート（ラフリー最優先 ＞ 基本はエントリー順[id順]） ───
+                    // ─── 行動順ソート ───
                     alive.sort((a, b) => {
                         let aIsLafree = a.name.includes("ラフリー");
                         let bIsLafree = b.name.includes("ラフリー");
                         if (aIsLafree && !bIsLafree) return -1;
                         if (!aIsLafree && bIsLafree) return 1;
-                        return a.id - b.id; // エントリーした順
+                        return a.id - b.id;
                     });
 
                     for (let i = 0; i < alive.length; i++) {
@@ -476,7 +482,6 @@
 
                         let useSkill = (attacker.skill !== "none" && Math.random() < skillTriggerChance);
 
-                        // ─── ヤミクマ連続攻撃用に、攻撃処理を切り出し ───
                         function executeAttack(att, trg) {
                             if (useSkill && att.mp > 0) {
                                 att.mp--;
@@ -518,15 +523,12 @@
                             if (trg.sleep > 0 && !isEvaded) trg.sleep = 0;
                         }
 
-                        // 1回目の通常行動（攻撃）
                         executeAttack(attacker, target);
 
-                        // ─── 新仕様：ヤミクマの1:1時・素早さ大幅上回り時の2回連続攻撃判定 ───
                         if (attacker.name.includes("ヤミクマ") && attacker.curHp > 0) {
                             let currentAlive = slimes.filter(s => s.curHp > 0);
-                            if (currentAlive.length === 2) { // 1対1のとき限定
+                            if (currentAlive.length === 2) {
                                 let enemy = currentAlive.find(s => s.id !== attacker.id);
-                                // 素早さが相手を10以上上回っており、かつ15%の確率で発動と定義
                                 if ((attacker.curSpd - enemy.curSpd) >= 10 && Math.random() < 0.15) {
                                     executeAttack(attacker, enemy);
                                 }
