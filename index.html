@@ -266,23 +266,33 @@
             "pulldog": { name: "プルドッグ", hp: 15, atk: 13, def: 1, spd: 39, crit: 5, type: "物理", target: "韋駄天", skill: "purupuru" },
             "snowdrop": { name: "スノードロップ", hp: 13, atk: 5, def: 7, spd: 22, crit: 5, type: "魔法,魔族", target: "鉄壁", skill: "piyolto" },
             "miraknight": { name: "ミラナイト", hp: 11, atk: 20, def: 11, spd: 12, crit: 7, type: "物理", target: "とどめ", skill: "kibikibin" },
-            "lafree": { name: "ラフリー", hp: 1, atk: 1, def: 1, spd: 90, crit: 0, type: "無", target: "弱者", skill: "lucky" },
+            "lafree": { name: "ラフリィ", hp: 1, atk: 1, def: 1, spd: 90, crit: 0, type: "無", target: "弱者", skill: "lucky" },
             "orc": { name: "オーク", hp: 20, atk: 18, def: 4, spd: 4, crit: 5, type: "物理", target: "弱者", skill: "none" },
             "golem": { name: "ゴーレム", hp: 11, atk: 16, def: 13, spd: 8, crit: 7, type: "物理", target: "力自慢", skill: "kachikochin" },
             "freku": { name: "フレクー", hp: 14, atk: 10, def: 10, spd: 16, crit: 7, type: "物理", target: "元気", skill: "oyatsu" },
             "yamikuma": { name: "ヤミクマ", hp: 20, atk: 16, def: 12, spd: 17, crit: 3, type: "魔法,魔族", target: "均等", skill: "nightmare" },
             "slapon": { name: "スラポン", hp: 14, atk: 12, def: 6, spd: 24, crit: 5, type: "魔族,魔法", target: "強者", skill: "funyarto" },
             "walta": { name: "cpt.ワル太", hp: 16, atk: 15, def: 8, spd: 34, crit: 7, type: "物理,魔族", target: "弱者", skill: "shibilto" },
-            "rutopen": { name: "ルトペン", hp: 17, atk: 16, def: 4, spd: 6, crit: 5, type: "魔族,物理,魔法耐性", target: "魔族", skill: "burelto" }
+            "rutopen": { name: "ルトペン", hp: 17, atk: 16, def: 4, spd: 6, crit: 5, type: "魔族,物理,魔法耐性", target: "魔族", skill: "burelto" },
+            // 限定キャラ
+            "k_achagara": { name: "黒華アチャガラ", hp: 19, atk: 14, def: 9, spd: 26, crit: 10, type: "物理", target: "鉄壁", skill: "zubazuban", limited: true },
+            "k_gargoi": { name: "黒華ガーゴイ", hp: 16, atk: 15, def: 8, spd: 38, crit: 5, type: "魔族,魔法", target: "元気", skill: "dokuruto", limited: true },
+            "k_warbit": { name: "黒華ワルビット", hp: 17, atk: 14, def: 9, spd: 22, crit: 6, type: "物理,魔族", target: "弱者", skill: "mukimukin", limited: true },
+            "k_golem": { name: "ジュエリーゴーレム", hp: 16, atk: 16, def: 15, spd: 8, crit: 7, type: "物理", target: "力自慢", skill: "kirakiran", limited: true },
+            "k_snowdrop": { name: "薔影スノードロップ", hp: 17, atk: 5, def: 8, spd: 32, crit: 5, type: "魔法,魔族", target: "鉄壁", skill: "piyolto", limited: true },
+            "k_bercha": { name: "龐狼ベルチャ", hp: 14, atk: 15, def: 16, spd: 18, crit: 25, type: "魔族,魔法", target: "力自慢", skill: "onemu", limited: true },
+            "k_guardian": { name: "メイクアップガーディアン", hp: 17, atk: 14, def: 19, spd: 14, crit: 5, type: "物理,物理耐性", target: "力自慢", skill: "medikaran", limited: true }
         };
 
         function initCards() {
             const container = document.getElementById('cards-container');
             container.innerHTML = '';
             
-            // プリセット用キーをあいうえお順（日本語名の昇順）にソート
-            const sortedKeys = Object.keys(CHARACTER_DATABASE)
-                .filter(k => k !== "custom")
+            // プリセット用キーをあいうえお順にソート（通常と限定で分ける）
+            const allKeys = Object.keys(CHARACTER_DATABASE).filter(k => k !== "custom");
+            const normalKeys = allKeys.filter(k => !CHARACTER_DATABASE[k].limited)
+                .sort((a, b) => CHARACTER_DATABASE[a].name.localeCompare(CHARACTER_DATABASE[b].name, 'ja'));
+            const limitedKeys = allKeys.filter(k => CHARACTER_DATABASE[k].limited)
                 .sort((a, b) => CHARACTER_DATABASE[a].name.localeCompare(CHARACTER_DATABASE[b].name, 'ja'));
 
             for (let i = 1; i <= 5; i++) {
@@ -292,7 +302,12 @@
                         <label>プリセット選択</label>
                         <select id="preset-${i}" onchange="loadPreset(${i})">
                             <option value="custom">--カスタム入力--</option>
-                            ${sortedKeys.map(k => `<option value="${k}">${CHARACTER_DATABASE[k].name}</option>`).join('')}
+                            <optgroup label="── 通常 ──">
+                            ${normalKeys.map(k => `<option value="${k}">${CHARACTER_DATABASE[k].name}</option>`).join('')}
+                            </optgroup>
+                            <optgroup label="── 限定 ──">
+                            ${limitedKeys.map(k => `<option value="${k}">${CHARACTER_DATABASE[k].name}</option>`).join('')}
+                            </optgroup>
                         </select>
                         <label>名前</label><input type="text" id="name-${i}" value="キャラ${i}">
                         <label>【調子】</label>
@@ -401,7 +416,7 @@
                     mp: 99, stan: 0, confuse: 0, poison: 0, sleep: 0, counter: false, golemShield: 0, fixedOne: false, skillUsedCount: 0
                 }));
 
-                let lafree = slimes.find(s => s.name.includes("ラフリー") && s.curHp > 0);
+                let lafree = slimes.find(s => s.name.includes("ラフリィ") && s.curHp > 0);
                 if (lafree) {
                     let highestOddsEnemy = [...slimes].filter(s => s.id !== lafree.id && s.curHp > 0).sort((a,b)=>b.odds - a.odds)[0];
                     if (highestOddsEnemy) {
@@ -417,8 +432,8 @@
                     
                     // ─── 行動順ソート ───
                     alive.sort((a, b) => {
-                        let aIsLafree = a.name.includes("ラフリー");
-                        let bIsLafree = b.name.includes("ラフリー");
+                        let aIsLafree = a.name.includes("ラフリィ");
+                        let bIsLafree = b.name.includes("ラフリィ");
                         if (aIsLafree && !bIsLafree) return -1;
                         if (!aIsLafree && bIsLafree) return 1;
                         return a.id - b.id;
@@ -513,6 +528,8 @@
                                 else if (att.skill === "nightmare") { slimes.forEach(s => { if (s.id !== att.id && s.curHp > 0) { damageProcess(att, s, Math.floor(att.curAtk * 0.5), true); } }); } 
                                 else if (att.skill === "funyarto") { if (Math.random() > 0.2) trg.curDef *= 0.7; } 
                                 else if (att.skill === "burelto") { if (Math.random() > 0.2) trg.curSpd *= 0.5; }
+                                else if (att.skill === "kirakiran") { att.curHp = Math.min(att.hp, att.curHp + 10); att.curDef *= 1.5; }
+                                else if (att.skill === "medikaran") { att.curAtk *= 2; }
                             } else {
                                 if (!isEvaded) {
                                     let dmg = att.fixedOne ? 1 : calculateDamage(att, trg);
