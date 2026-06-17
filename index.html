@@ -193,6 +193,42 @@
             box-shadow: 2px 0 10px var(--accent-glow);
         }
 
+        /* ── お知らせ欄 ── */
+        .news-section {
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            border-left: 4px solid var(--accent);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 16px;
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+        .news-section h3 {
+            margin: 0 0 6px;
+            font-size: 0.85em;
+            letter-spacing: 0.05em;
+            color: var(--accent);
+            text-shadow: 0 0 8px var(--accent-glow);
+        }
+        .news-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .news-list li {
+            font-size: 0.85em;
+            color: var(--text);
+            padding: 3px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .news-list li:last-child { border-bottom: none; }
+        .news-date {
+            color: var(--accent);
+            font-weight: bold;
+            margin-right: 8px;
+            font-size: 0.9em;
+        }
+
         /* ── レスポンシブ：幅広い画面ではカードを折り返す ── */
         @media (min-width: 700px) {
             body { padding: 20px 24px 60px; }
@@ -203,6 +239,13 @@
     </style>
 </head>
 <body>
+
+    <div class="news-section">
+        <h3>📢 お知らせ</h3>
+        <ul class="news-list">
+            <li><span class="news-date">6/18</span>限定キャラを追加、キャラのステータスなどの追加</li>
+        </ul>
+    </div>
 
     <h1>🏆 ぽれくゅ シミュレーター</h1>
 
