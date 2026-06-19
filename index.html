@@ -356,11 +356,14 @@
                         <label>名前</label><input type="text" id="name-${i}" value="キャラ${i}">
                         <label>【調子】</label>
                         <select id="condition-${i}" class="condition-select">
+                            <option value="best">絶好調 🌟🌟</option>
                             <option value="good">好調 🌟</option>
                             <option value="normal" selected>普通 😐</option>
-                            <option value="bad">悪い 💧</option>
+                            <option value="bad">不調 💧</option>
+                            <option value="worst">絶不調 💧💧</option>
                         </select>
-                        <label>オッズ（倍率）</label><input type="number" step="0.1" id="odds-${i}" class="odds-input" value="${(1.5 + i).toFixed(1)}">
+                        <label>オッズ順位</label>
+                        <select id="odds-${i}" class="odds-input"></select>
                         <label>HP</label><input type="number" id="hp-${i}" value="15">
                         <label>攻撃力</label><input type="number" id="atk-${i}" value="12">
                         <label>防御力</label><input type="number" id="def-${i}" value="6">
@@ -406,6 +409,28 @@
             for (let i = 1; i <= 5; i++) {
                 document.getElementById(`card-${i}`).style.display = i <= count ? 'block' : 'none';
             }
+            updateOddsRankOptions(count);
+        }
+
+        function updateOddsRankOptions(count) {
+            for (let i = 1; i <= 5; i++) {
+                const sel = document.getElementById(`odds-${i}`);
+                if (!sel) continue;
+                const prevValue = sel.value;
+                sel.innerHTML = '';
+                for (let rank = 1; rank <= count; rank++) {
+                    const opt = document.createElement('option');
+                    opt.value = rank;
+                    opt.textContent = `${rank}位`;
+                    sel.appendChild(opt);
+                }
+                // できるだけ元の順位（≒エントリー番号）を維持。範囲外ならエントリー順位にフォールバック
+                if (prevValue && Number(prevValue) <= count) {
+                    sel.value = prevValue;
+                } else {
+                    sel.value = Math.min(i, count);
+                }
+            }
         }
 
         function calculateDamage(attacker, defender, isMagic = false) {
@@ -446,7 +471,7 @@
                     atk: Number(document.getElementById(`atk-${i}`).value),
                     def: Number(document.getElementById(`def-${i}`).value),
                     spd: Number(document.getElementById(`spd-${i}`).value),
-                    odds: Number(document.getElementById(`odds-${i}`).value),
+                    odds: (6 - Number(document.getElementById(`odds-${i}`).value)),
                     type: document.getElementById(`type-${i}`).value,
                     targetStrategy: document.getElementById(`target-${i}`).value,
                     skill: document.getElementById(`skill-${i}`).value,
@@ -468,7 +493,7 @@
                 let slimes = initialActiveSlimes.map(s => ({
                     ...s,
                     curHp: s.hp, curAtk: s.atk, curDef: s.def, curSpd: s.spd, curCrit: s.crit,
-                    mp: 99, stan: 0, confuse: 0, poison: 0, sleep: 0, counter: false, golemShield: 0, fixedOne: false, skillUsedCount: 0
+                    mp: 99, stan: 0, confuse: 0, poison: 0, sleep: 0, counter: false, golemShield: 0, fixedOne: false, skillUsedCount: 0, atkBuffCount: 0
                 }));
 
                 let lafree = slimes.find(s => s.name.includes("ラフリィ") && s.curHp > 0);
@@ -540,21 +565,24 @@
                         let evadeChance = baseEvade - (spdFactor * 0.7); // 自分が遅いほど相手は当てにくい（回避率UP）
                         if (target.type.includes("鈍足回避")) evadeChance *= 2;
 
-                        if (target.condition === "good") evadeChance += 0.04;  
-                        if (target.condition === "bad") evadeChance -= 0.03;   
-                        if (attacker.condition === "good") evadeChance -= 0.03; 
-                        if (attacker.condition === "bad") evadeChance += 0.04;  
+                        // 調子（5段階）による回避率補正
+                        const evadeConditionBonus = { best: 0.07, good: 0.04, normal: 0, bad: -0.03, worst: -0.06 };
+                        const evadeConditionPenaltyForAttacker = { best: -0.06, good: -0.03, normal: 0, bad: 0.04, worst: 0.07 };
+                        evadeChance += evadeConditionBonus[target.condition] ?? 0;
+                        evadeChance += evadeConditionPenaltyForAttacker[attacker.condition] ?? 0;
 
                         evadeChance = Math.max(0.02, Math.min(0.60, evadeChance)); // 上限60%でキャップ
 
                         let isEvaded = Math.random() < evadeChance;
                         
-                        let skillTriggerChance = 0.40;
-                        if (attacker.condition === "good") skillTriggerChance = 0.60;
-                        if (attacker.condition === "bad") skillTriggerChance = 0.20;
-                        // ピンクモケマルはスキル発動率30〜40%（好調時は50〜60%）
+                        // 調子（5段階）によるスキル発動率
+                        const skillTriggerByCondition = { best: 0.75, good: 0.60, normal: 0.40, bad: 0.20, worst: 0.08 };
+                        let skillTriggerChance = skillTriggerByCondition[attacker.condition] ?? 0.40;
+
+                        // ピンクモケマルはスキル発動率レンジが狭め（好調〜不調の差が控えめなキャラ性能）
                         if (attacker.skill === "hanakagura_p") {
-                            skillTriggerChance = attacker.condition === "good" ? 0.55 : attacker.condition === "bad" ? 0.25 : 0.35;
+                            const hanaTrigger = { best: 0.65, good: 0.55, normal: 0.35, bad: 0.25, worst: 0.15 };
+                            skillTriggerChance = hanaTrigger[attacker.condition] ?? 0.35;
                         }
 
                         let useSkill = (attacker.skill !== "none" && Math.random() < skillTriggerChance);
@@ -581,7 +609,7 @@
                                     let dmg = Math.floor(calculateDamage(att, trg, true) * 1.5);
                                     if (!isEvaded) damageProcess(att, trg, dmg, false);
                                 } 
-                                else if (att.skill === "mukimukin") { att.curAtk = Math.floor(att.curAtk * 1.3); } 
+                                else if (att.skill === "mukimukin") { if (att.atkBuffCount < 2) { att.curAtk = Math.floor(att.curAtk * 1.3); att.atkBuffCount++; } } 
                                 else if (att.skill === "kanashibaru" || att.skill === "shibilto") { if (Math.random() > 0.3) trg.stan = Math.floor(Math.random() * 2) + 1; } 
                                 else if (att.skill === "daichi") { if (!isEvaded) damageProcess(att, trg, Math.floor(att.curAtk / 2), true); } 
                                 else if (att.skill === "gaogao") {
@@ -592,11 +620,11 @@
                                     } else {
                                         let dmg = Math.floor(calculateDamage(att, trg) * 1.5);
                                         if (!isEvaded) damageProcess(att, trg, dmg, false);
-                                        att.curAtk = Math.floor(att.curAtk * 1.3);
+                                        if (att.atkBuffCount < 2) { att.curAtk = Math.floor(att.curAtk * 1.3); att.atkBuffCount++; }
                                     }
                                 } 
                                 else if (att.skill === "zubazuban") { att.curCrit = Math.min(att.curCrit + 0.05, 0.8); } 
-                                else if (att.skill === "funyamukin") { att.curAtk = Math.floor(att.curAtk * 1.5); att.curDef = Math.floor(att.curDef * 0.7); } 
+                                else if (att.skill === "funyamukin") { if (att.atkBuffCount < 2) { att.curAtk = Math.floor(att.curAtk * 1.5); att.curDef = Math.floor(att.curDef * 0.7); att.atkBuffCount++; } } 
                                 else if (att.skill === "refresh") { att.curHp = Math.min(att.hp, att.curHp + 9); } 
                                 else if (att.skill === "dokuruto") { if (Math.random() > 0.2) trg.poison = 5; }  // 攻撃なし、毒のみ
                                 else if (att.skill === "pitapitan") { att.curSpd += 20; } 
@@ -612,12 +640,12 @@
                                 else if (att.skill === "piyolto") { if (Math.random() > 0.2) trg.confuse = 3; } 
                                 else if (att.skill === "kibikibin") { att.curSpd = Math.floor(att.curSpd * 3); } // 3倍に修正
                                 else if (att.skill === "kachikochin") { att.golemShield = 2; } 
-                                else if (att.skill === "oyatsu") { att.curHp = Math.min(att.hp, att.curHp + 6); att.curAtk = Math.floor(att.curAtk * 2); } 
+                                else if (att.skill === "oyatsu") { att.curHp = Math.min(att.hp, att.curHp + 6); if (att.atkBuffCount < 2) { att.curAtk = Math.floor(att.curAtk * 2); att.atkBuffCount++; } } 
                                 else if (att.skill === "nightmare") { slimes.forEach(s => { if (s.id !== att.id && s.curHp > 0) { damageProcess(att, s, Math.floor(att.curAtk * 0.5), true); } }); } 
                                 else if (att.skill === "funyarto") { if (Math.random() > 0.2) trg.curDef = Math.floor(trg.curDef * 0.5); }
                                 else if (att.skill === "burelto") { if (Math.random() > 0.2) trg.curSpd = Math.floor(trg.curSpd * 0.5); }
                                 else if (att.skill === "kirakiran") { att.curHp = Math.min(att.hp, att.curHp + 10); att.curDef = Math.floor(att.curDef * 1.5); }
-                                else if (att.skill === "medikaran") { att.curAtk = Math.floor(att.curAtk * 2); }
+                                else if (att.skill === "medikaran") { if (att.atkBuffCount < 2) { att.curAtk = Math.floor(att.curAtk * 2); att.atkBuffCount++; } }
                                 else if (att.skill === "lucky") { /* ラフリィは別処理 */ }
                             } else {
                                 if (!isEvaded) {
