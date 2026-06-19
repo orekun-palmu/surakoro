@@ -411,10 +411,10 @@
         function calculateDamage(attacker, defender, isMagic = false) {
             if (!isMagic && defender.type.includes("物理耐性")) return 1;
             if (isMagic && defender.type.includes("魔法耐性")) {
-                let dmg = Math.floor((attacker.curAtk * 0.95) - (defender.curDef * 0.8));
+                let dmg = Math.floor((attacker.curAtk * 0.85) - (defender.curDef * 1.1));
                 return Math.max(1, Math.floor(dmg / 2));
             }
-            let dmg = Math.floor((attacker.curAtk * 0.95) - (defender.curDef * 0.8)) + (Math.floor(Math.random() * 2));
+            let dmg = Math.floor((attacker.curAtk * 0.85) - (defender.curDef * 1.1)) + (Math.floor(Math.random() * 2));
             return Math.max(1, dmg);
         }
 
@@ -534,15 +534,18 @@
                         }
 
                         let spdDiff = attacker.curSpd - target.curSpd;
-                        let evadeChance = 0.06; 
-                        if (spdDiff < 0) evadeChance += 0.04;
-                        if (spdDiff > 0) evadeChance -= 0.03;
+                        // 素早さ差に比例して回避率を計算（最大60%まで）
+                        let baseEvade = 0.06;
+                        let spdFactor = spdDiff / Math.max(1, attacker.curSpd + target.curSpd); // -0.5 ~ +0.5 程度
+                        let evadeChance = baseEvade - (spdFactor * 0.7); // 自分が遅いほど相手は当てにくい（回避率UP）
                         if (target.type.includes("鈍足回避")) evadeChance *= 2;
 
                         if (target.condition === "good") evadeChance += 0.04;  
                         if (target.condition === "bad") evadeChance -= 0.03;   
                         if (attacker.condition === "good") evadeChance -= 0.03; 
                         if (attacker.condition === "bad") evadeChance += 0.04;  
+
+                        evadeChance = Math.max(0.02, Math.min(0.60, evadeChance)); // 上限60%でキャップ
 
                         let isEvaded = Math.random() < evadeChance;
                         
@@ -555,6 +558,8 @@
                         }
 
                         let useSkill = (attacker.skill !== "none" && Math.random() < skillTriggerChance);
+                        // 発動はしたが不発に終わる「空振り」判定（各スキル固有の成功率がないものに適用）
+                        let skillFizzle = useSkill && Math.random() < 0.12;
 
                         // スリープ中は攻撃できない（攻撃されると起きる）
                         if (attacker.sleep > 0) {
@@ -563,7 +568,12 @@
                         }
 
                         function executeAttack(att, trg) {
-                            if (useSkill && att.mp > 0) {
+                            if (useSkill && att.mp > 0 && skillFizzle) {
+                                // スキル発動はしたが空振り（効果なし、攻撃もしない）
+                                att.mp--;
+                                att.skillUsedCount++;
+                            }
+                            else if (useSkill && att.mp > 0) {
                                 att.mp--;
                                 att.skillUsedCount++;
 
@@ -612,7 +622,7 @@
                             } else {
                                 if (!isEvaded) {
                                     let dmg = att.fixedOne ? 1 : calculateDamage(att, trg);
-                                    if (Math.random() < att.curCrit) { dmg = Math.floor(dmg * 1.5); }
+                                    if (Math.random() < att.curCrit) { dmg = Math.floor(dmg * 2); }
                                     damageProcess(att, trg, dmg, false);
                                 }
                             }
